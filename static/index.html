@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang=en>
+<head>
+  <meta charset=utf-8>
+  <title>URL health slack notifier</title>
+  <link rel="icon" type="image/ico" href="/static/favicon.ico">
+
+  <script src="/static/jquery.min.js"></script>
+
+  <link rel="stylesheet" href="/static/normalize.css">
+  <link rel="stylesheet" href="/static/skeleton.css">
+  <link rel="stylesheet" href="/static/style.css">
+
+  <script src="/static/jquery.modal.min.js"></script>
+  <link rel="stylesheet" href="/static/jquery.modal.min.css" />
+
+  <script>
+    var checks = [];
+    var modal_to_show = "";
+
+    function get_sorted_tags(tags) {
+      var keys = [];
+      var has_name = false;
+      $.each(tags, function(k, v) {
+        if( k != "name" ) {
+          keys.push(k);
+        } else {
+          has_name = true;
+        }
+      });
+      keys.sort();
+      if( has_name ) {
+        keys.unshift("name");
+      }
+
+      var pairs = [];
+      $.each(keys, function( i, k ) {
+        var v = tags[k];
+        pairs.push([k, v]);
+      });
+
+      return pairs;
+    }
+
+    function epoch_to_date(epoch) {
+     var ms = epoch*1000 + (new Date().getTimezoneOffset() * -1);
+     return new Date(ms);
+    }
+
+    function get_name(tags) {
+      var name = '';
+      var first = true;
+      $.each(get_sorted_tags(tags), function( i, kv) {
+        var k = kv[0];
+        var v = kv[1];
+        if( first ) {
+          first = false;
+        } else {
+          name = name + "<br>";
+        }
+        name = name + k + "=<b>" + v + "</b>";
+      });
+      return name;
+    }
+
+    function formatDateTime(date) {
+        var d = new Date(date),
+            month = '' + (d.getMonth() + 1),
+            day = '' + d.getDate(),
+            year = d.getFullYear();
+
+        if (month.length < 2) month = '0' + month;
+        if (day.length < 2) day = '0' + day;
+
+        return [year, month, day].join('-');
+    }
+
+    function load_silencers() {
+      $.getJSON("/silencers.json", function(data, status){
+        if( data.length == 0 ) {
+          $('#silencers').html('<i>There are not active silencers</i>');
+          return;
+        }
+        var table = $('<table class="u-full-width">');
+        var thead = $('<thead><tr><td>Tags</td><td>Reason</td><td>Until</td><td>Remove</td></tr></thead>');
+        var tbody = $('<tbody>');
+        $.each(data, function( i, silencer ) {
+          var text = get_name(silencer.filters);
+          var reason = silencer.reason;
+          var until = formatDateTime(epoch_to_date(silencer.until));
+          if( reason == '' ) {
+            reason = '---'
+          }
+
+          var remove_link = $('<a href="#">').click(function(s) { return function() {
+            var silencer_name = get_tags_text(s.filters);
+            if( confirm('Are you sure you want to delete the filter:\n\n' + silencer_name) ) {
+              var silencer = JSON.stringify({
+                "filters": s.filters,
+              });
+              $.post('/delete-silencer', silencer, function(data) {
+                startup();
+              });
+            }
+          }}(silencer));
+          remove_link.html('x');
+
+          var row = $('<tr>');
+          row.append($('<td>').html(text));
+          row.append($('<td>').html(reason));
+          row.append($('<td>').html(until));
+          var td = $('<td>');
+          td.append(remove_link);
+          row.append(td);
+          tbody.append(row);
+        });
+
+        table.append(thead);
+        table.append(tbody);
+
+        $('#silencers').html(table);
+      });
+    }
+
+    function load_checks() {
+      $.getJSON("/checks.json", function(data, status){
+        checks = data;
+        var table = $('<table class="u-full-width">');
+        var thead = $('<thead><tr><td>Name</td><td>Status</td><td>last run</td></tr></thead>');
+        var tbody = $('<tbody>');
+        $.each(checks, function( i, check ) {
+          var name = get_name(check.tags);
+          var row = $('<tr class="clickable-row">');
+          if( check.silenced ) {
+            row.addClass("checksilenced")
+          }
+          row.click(function(chk) { return function(){
+            show_check_details(chk);
+          }}(check));
+          row.append($('<td>').html(name));
+          if( check.ok ) {
+            row.append($('<td>').html('OK'));
+          } else {
+            row.append($('<td>').html('FAIL'));
+          }
+          //row.append($('<td>').html(check.text));
+          row.append($('<td>').html(check.last_run));
+          //row.append($('<td>').html(check.duration));
+          tbody.append(row);
+        });
+
+        table.append(thead);
+        table.append(tbody);
+
+        $('#checks').html(table);
+
+        show_active_modal();
+      });
+    }
+
+    function showAddSilencer(tags) {
+      modal_to_show = 'add-silencer';
+      update_location_hash('add-silencer');
+      var div = $('<div class="modal" id="add-silencer">');
+      div.append($('<h3>Create a New Silencer</h3>'));
+      div.append($('<p>Silence all checks that match the following tags</p>'));
+
+      var form = $('<form>');
+
+      var label_tags = $('<label>Tags:</label>');
+      var input_tags = $('<textarea class="u-full-width tags">');
+      label_tags.append(input_tags);
+
+      input_tags.val(get_tags_text(tags));
+
+      var label_reason = $('<label>Reason:</label>');
+      var input_reason = $('<input class="u-full-width">');
+      label_reason.append(input_reason);
+
+      var button = $('<a class="button button-primary">Add Silencer</a>');
+      button.click(function() {
+        var tags = get_tags_from_text(input_tags.val());
+        var reason = input_reason.val();
+        var silencer = JSON.stringify({
+          "filters": tags,
+          "reason": reason,
+          "until": 2000000000,
+        });
+        $.post('/add-silencer', silencer, function(data) {
+          $.modal.close();
+          startup();
+        });
+      });
+
+      form.append(label_tags);
+      form.append(label_reason);
+      form.append(button);
+
+      div.append(form);
+
+      div.modal();
+      div.on($.modal.CLOSE, function(event, modal) {
+        if( modal_to_show == 'add-silencer' ) {
+          modal_to_show = '';
+          show_active_modal();
+        }
+      });
+
+    }
+
+    function get_tags_text(tags) {
+      var text = "";
+      $.each(get_sorted_tags(tags), function( i, kv) {
+        var k = kv[0];
+        var v = kv[1];
+        if( text != "" ) {
+          text = text + "\n";
+        }
+        text = text + k + '=' + v;
+      });
+      return text;
+    }
+
+    function get_tags_from_text(text) {
+      var tags = {};
+      var kvs = text.split(/[ \n]+/);
+      $.each(kvs, function(i, kv) {
+        kv = kv.split('=');
+        var k = kv[0];
+        var v = kv[1];
+        tags[k] = v;
+      });
+      return tags;
+    }
+
+    function get_tags_table(tags) {
+      var rows = []
+      $.each(get_sorted_tags(tags), function( i, kv) {
+        var k = kv[0];
+        var v = kv[1];
+        rows.push([k, v]);
+      });
+      return build_table(rows);
+    }
+
+    function build_table(rows) {
+      var table = $('<table>');
+      $.each(rows, function( i, row ) {
+        var tr = $('<tr>');
+        $.each(row, function( i, col) {
+          var td = $('<td>');
+          td.append(col);
+          tr.append(td);
+        });
+        table.append(tr);
+      });
+      return table;
+    }
+
+    function build_status(ok) {
+      if( ok ) {
+        return $('<span class="checkok">OK</span>');
+      } else {
+        return $('<span class="checkfail">FAIL</span>');
+      }
+    }
+
+    function build_pre(text) {
+      var pre = $('<pre>');
+      pre.text(text);
+      return pre;
+    }
+
+    function show_check_details(check) {
+      modal_to_show = check.id;
+      update_location_hash( check.id );
+      var div = $('<div class="modal" id="check">');
+
+      div.append($('<h3>Check Details</h3>'));
+
+      div.append($('<h4>Tags</h4>'));
+      div.append(get_tags_table(check.tags));
+
+      div.append($('<h4>Output</h4>'));
+      var rows = [];
+      $.each(check.details, function(k, v) {
+        rows.push([k, build_pre(v)]);
+      });
+      div.append(build_table(rows));
+
+      div.append($('<h4>Details</h4>'));
+      div.append(build_table([
+        ['Last Run',        build_pre(check.last_run)        ],
+        ['Duration',        build_pre(check.duration)        ],
+        ['Silenced',        build_pre(check.silenced)        ],
+        ['Status',          build_status(check.ok)           ],
+        ['Num Consecutive', build_pre(check.num_consecutive) ],
+      ]));
+
+      var button = $('<a class="button button-primary">Add Silencer</a>');
+      button.click(function() {
+        return showAddSilencer(check.tags);
+      });
+      div.append(button);
+
+      div.modal();
+      div.on($.modal.CLOSE, function(event, modal) {
+        if( modal_to_show == check.id ) {
+          modal_to_show = '';
+          show_active_modal();
+        }
+      });
+    }
+
+    function update_location_hash(h) {
+      var current = get_location_hash();
+      if( current !== h ) {
+        window.location.hash = h;
+      }
+    }
+
+    function show_active_modal() {
+      var current = $.modal.getCurrent();
+      var current_id = '';
+      if( current ) {
+        current_id = current.anchor[0].id;
+      }
+
+      if( current_id == modal_to_show ) {
+        update_location_hash(current_id);
+        return;
+      }
+
+      if( modal_to_show === 'add-silencer' ) {
+        if( current_id !== 'add-silencer') {
+          showAddSilencer({});
+        }
+        return;
+      }
+
+      var found = false;
+      $.each(checks, function( i, check ) {
+        if( check.id == modal_to_show ) {
+          if( current_id !== 'check' ) {
+            show_check_details( check );
+            update_location_hash(check.id);
+          }
+          found = true;
+        }
+      });
+
+    }
+
+    function get_location_hash() {
+      var h = window.location.hash;
+      if( h.charAt(0) == '#' ) {
+        h = h.substring(1);
+      }
+      return h;
+    }
+
+    function display_hash_modal() {
+      modal_to_show = get_location_hash()
+      show_active_modal();
+    }
+
+    function startup() {
+      load_checks();
+      load_silencers();
+
+      display_hash_modal();
+      window.onhashchange = display_hash_modal;
+    }
+
+    $(function() {
+      $(document.body).attr('onload', 'startup();');
+    });
+  </script>
+</head>
+<body>
+  <!--
+  <h1>URL health slack notifier</h1>
+  <p>This system monitors a set of URLs and notifies slack if any URL or docker checks are unhealthy</p>
+  <h2>Filters</h2>
+  <h2>Silencers</h2>
+  <h2>Status</h2>
+  <div id="checks" />
+  -->
+
+<div class="container">
+  <section class="header">
+    <h1>Bystander alerting system</h1>
+    <div>This system monitors a set of URLs and docker commands</div>
+  </section>
+
+  <hr/>
+
+  <section class="header">
+    <h2>Silencers</h2>
+    <div id="silencers"><p>loading...</p></div>
+    <p>To add a new silencer, click on a check, then click on the add Silencer.</p>
+  </section>
+
+  <hr/>
+
+  <section class="header">
+    <h2>Checks</h2>
+    <div id="checks">loading...</div>
+  </section>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,24 @@
+listen_address: 0.0.0.0:8088
+web_address: http://hostname-to-bystander:8088/
+slack_webhook: https://hooks.slack.com/services/.../.../...
+db: bystander.db
+max_history: 60
+checks:
+ - type: url
+   tags:
+    - name: url-check
+    - subsystem: external
+    - environment: prod
+   timeout: 5s
+   url: http://example.com/bad
+   num_failures_before_alerting: 3
+
+ - type: docker
+   tags:
+    - name: docker-check
+    - subsystem: internal
+    - environment: prod
+   image: docker.internal.example.com/checks/my-check:a9f2bb72f1
+   command: /app/check-command -v --foo 123
+   num_failures_before_alerting: 10
+

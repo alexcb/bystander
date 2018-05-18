@@ -1,0 +1,13 @@
+Bystander monitors URLs or runs docker commands; if they fails, it alerts to slack via a webhook.
+
+Requirements:
+
+    go
+
+Building:
+
+    ./build.sh
+
+Running:
+
+    BYSTANDER_CONFIG=config/config.yaml bystander

@@ -12,6 +12,7 @@ checks:
    timeout: 5s
    url: http://example.com/bad
    num_failures_before_alerting: 3
+   num_success_before_recovery: 1
 
  - type: docker
    tags:
@@ -21,4 +22,5 @@ checks:
    image: docker.internal.example.com/checks/my-check:a9f2bb72f1
    command: /app/check-command -v --foo 123
    num_failures_before_alerting: 10
+   num_success_before_recovery: 2
 

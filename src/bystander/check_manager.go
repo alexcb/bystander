@@ -38,8 +38,15 @@ func (s *check) shouldAlert() bool {
 	}
 
 	ok, numConsecutive := getConsecutiveStatus(s.status)
-	if numConsecutive < s.config.CommonConfig().numFailuresBeforeAlerting {
-		return false
+
+	if ok {
+		if numConsecutive < s.config.CommonConfig().numSuccessBeforeRecovery {
+			return false
+		}
+	} else {
+		if numConsecutive < s.config.CommonConfig().numFailuresBeforeAlerting {
+			return false
+		}
 	}
 
 	if s.lastAlertedStatus == ok {

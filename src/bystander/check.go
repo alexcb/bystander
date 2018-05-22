@@ -13,6 +13,7 @@ type Check interface {
 type CheckConfig struct {
 	tags                      map[string]string
 	numFailuresBeforeAlerting int
+	numSuccessBeforeRecovery  int
 }
 
 // CommonConfig return the common check config

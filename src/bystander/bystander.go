@@ -111,6 +111,17 @@ func getConfig() (*Config, error) {
 				}
 			}
 
+			numSuccessBeforeRecovery := numFailuresBeforeAlerting
+			if x, ok := checkConfig["num_success_before_recovery"]; ok {
+				numSuccessBeforeRecovery, ok = x.(int)
+				if !ok {
+					panic("unable to parse numFailuresBeforeAlerting -- value is not an integer")
+				}
+				if numSuccessBeforeRecovery > config.MaxHistory {
+					panic("num_failures_before_alerting must be less than max_history")
+				}
+			}
+
 			tags := map[string]string{}
 			for _, x := range checkConfig["tags"].([]interface{}) {
 				xx := x.(map[interface{}]interface{})
@@ -134,6 +145,7 @@ func getConfig() (*Config, error) {
 			}
 			check.CommonConfig().tags = tags
 			check.CommonConfig().numFailuresBeforeAlerting = numFailuresBeforeAlerting
+			check.CommonConfig().numSuccessBeforeRecovery = numSuccessBeforeRecovery
 			config.Checks = append(config.Checks, check)
 		}
 	}

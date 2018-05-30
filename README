@@ -10,4 +10,4 @@ Building:
 
 Running:
 
-    BYSTANDER_CONFIG=config/config.yaml bystander
+    BYSTANDER_CONFIG=config/config.yaml ./bystander

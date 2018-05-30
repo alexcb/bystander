@@ -178,7 +178,13 @@
       label_reason.append(input_reason);
 
       var button = $('<a class="button button-primary">Add Silencer</a>');
-      button.click(function() {
+
+      form.append(label_tags);
+      form.append(label_reason);
+      form.append(button);
+      button.click(function() { form.submit(); })
+
+      form.submit(function(event) {
         var tags = get_tags_from_text(input_tags.val());
         var reason = input_reason.val();
         var silencer = JSON.stringify({
@@ -190,11 +196,8 @@
           $.modal.close();
           startup();
         });
+        event.preventDefault();
       });
-
-      form.append(label_tags);
-      form.append(label_reason);
-      form.append(button);
 
       div.append(form);
 

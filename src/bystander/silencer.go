@@ -45,6 +45,7 @@ func serializeFilters(f map[string]string) []byte {
 
 	var buf bytes.Buffer
 	w := structuredstream.NewWriter(&buf)
+	w.Write(uint16(0))
 
 	for _, k := range keys {
 		w.WriteUint16PrefixedString(k)
@@ -58,6 +59,11 @@ func serializeFilters(f map[string]string) []byte {
 
 func deserializeFilters(b []byte) (map[string]string, error) {
 	r := structuredstream.NewReader(bytes.NewReader(b))
+	version := r.ReadUint16()
+	if version != 0 {
+		panic("bad version")
+	}
+
 	filters := map[string]string{}
 	for {
 		key := r.ReadUint16PrefixedString()

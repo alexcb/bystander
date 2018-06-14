@@ -136,6 +136,7 @@ func (s *check) json() string {
 	data, err := json.Marshal(&CheckResult{
 		ID:             s.id(),
 		Tags:           s.config.CommonConfig().tags,
+		Notes:          s.config.CommonConfig().notes,
 		Details:        details,
 		OK:             ok,
 		NumConsecutive: numConsecutive,
@@ -247,6 +248,7 @@ type CheckResult struct {
 	LastRun        time.Time         `json:"last_run"`
 	Duration       float64           `json:"duration"`
 	Silenced       bool              `json:"silenced"`
+	Notes          string            `json:"notes"`
 }
 
 func (s *checkManager) getChecksJSON() string {

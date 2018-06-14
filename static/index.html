@@ -284,6 +284,12 @@
       div.append($('<h4>Tags</h4>'));
       div.append(get_tags_table(check.tags));
 
+      if( check.notes ) {
+        div.append($('<h4>Notes</h4>'));
+        div.append(check.notes);
+        div.append($('<hr>'));
+      }
+
       div.append($('<h4>Output</h4>'));
       var rows = [];
       $.each(check.details, function(k, v) {

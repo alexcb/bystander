@@ -100,6 +100,14 @@ func getConfig() (*Config, error) {
 				panic("check config without tags")
 			}
 
+			notes := ""
+			if x, ok := checkConfig["notes"]; ok {
+				notes, ok = x.(string)
+				if !ok {
+					panic(fmt.Sprintf("unable to parse notes -- value is not a string; got %t: %v", x, x))
+				}
+			}
+
 			numFailuresBeforeAlerting := 1
 			if x, ok := checkConfig["num_failures_before_alerting"]; ok {
 				numFailuresBeforeAlerting, ok = x.(int)
@@ -146,6 +154,7 @@ func getConfig() (*Config, error) {
 			check.CommonConfig().tags = tags
 			check.CommonConfig().numFailuresBeforeAlerting = numFailuresBeforeAlerting
 			check.CommonConfig().numSuccessBeforeRecovery = numSuccessBeforeRecovery
+			check.CommonConfig().notes = notes
 			config.Checks = append(config.Checks, check)
 		}
 	}

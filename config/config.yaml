@@ -13,6 +13,10 @@ checks:
    url: http://example.com/bad
    num_failures_before_alerting: 3
    num_success_before_recovery: 1
+   notes: >
+       free form text, perhaps to a <a href="url.txt">url</a>?
+       I'm not sure if we should support something like markdown?
+       for now it will just be HTML
 
  - type: docker
    tags:

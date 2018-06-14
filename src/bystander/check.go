@@ -14,6 +14,7 @@ type CheckConfig struct {
 	tags                      map[string]string
 	numFailuresBeforeAlerting int
 	numSuccessBeforeRecovery  int
+	notes                     string
 }
 
 // CommonConfig return the common check config

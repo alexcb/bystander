@@ -196,7 +196,7 @@ func getConsecutiveStatus(statuses []*CheckStatus) (bool, int) {
 	return ok, num
 }
 
-func (s *checkManager) run(fn alertFunc) {
+func (s *checkManager) run(notifiers map[string]Notifier) {
 	for _, check := range s.checks {
 		status := check.run()
 		s.lock.Lock()
@@ -211,8 +211,10 @@ func (s *checkManager) run(fn alertFunc) {
 
 		s.lock.Unlock()
 
+		notifier := notifiers[check.config.CommonConfig().notifier]
+
 		if alertNeeded {
-			fn(check.id(), check.name(), status.ok, status.details)
+			notifier.Notify(check.id(), check.name(), status.ok, status.details)
 		}
 	}
 }

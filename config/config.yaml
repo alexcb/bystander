@@ -1,8 +1,14 @@
 listen_address: 0.0.0.0:8088
 web_address: http://hostname-to-bystander:8088/
-slack_webhook: https://hooks.slack.com/services/.../.../...
 db: bystander.db
 max_history: 60
+notifiers:
+  slack-channel-one:
+    type: slack
+    webhook: https://hooks.slack.com/services/.../.../...
+  slack-channel-two:
+    type: slack
+    webhook: https://hooks.slack.com/services/.../.../...
 checks:
  - type: url
    tags:
@@ -11,8 +17,9 @@ checks:
     - environment: prod
    timeout: 5s
    url: http://example.com/bad
-   num_failures_before_alerting: 3
+   num_failures_before_alerting: 1
    num_success_before_recovery: 1
+   notifier: slack-channel-one
    notes: >
        free form text, perhaps to a <a href="url.txt">url</a>?
        I'm not sure if we should support something like markdown?
@@ -27,4 +34,5 @@ checks:
    command: /app/check-command -v --foo 123
    num_failures_before_alerting: 10
    num_success_before_recovery: 2
+   notifier: slack-channel-two
 

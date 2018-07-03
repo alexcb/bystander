@@ -15,6 +15,7 @@ type CheckConfig struct {
 	numFailuresBeforeAlerting int
 	numSuccessBeforeRecovery  int
 	notes                     string
+	notifier                  string
 }
 
 // CommonConfig return the common check config

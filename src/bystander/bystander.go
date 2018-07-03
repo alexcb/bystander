@@ -20,6 +20,7 @@ type Config struct {
 	Checks       []Check
 	DatabasePath string
 	MaxHistory   int
+	Notifiers    map[string]Notifier
 }
 
 var errMissingDB = fmt.Errorf("missing db path")
@@ -50,7 +51,8 @@ func getConfig() (*Config, error) {
 	}
 
 	config := Config{
-		Checks: []Check{},
+		Checks:    []Check{},
+		Notifiers: map[string]Notifier{},
 	}
 
 	listenAddr, ok := root["listen_address"]
@@ -84,6 +86,31 @@ func getConfig() (*Config, error) {
 		config.WebAddress = config.ListenAddr
 	}
 
+	notifiers, ok := root["notifiers"]
+	if ok {
+		for k, v := range notifiers.(map[interface{}]interface{}) {
+			name := k.(string)
+			notifierConfig := v.(map[interface{}]interface{})
+
+			if _, ok := config.Notifiers[name]; ok {
+				panic(fmt.Sprintf("notifier %q already registered", name))
+			}
+
+			notifierType, ok := notifierConfig["type"]
+			if !ok {
+				panic("notifier config without type")
+			}
+
+			var notifier Notifier
+			switch notifierType {
+			case "slack":
+				notifier = parseSlackNotifier(notifierConfig)
+			}
+			notifier.CommonConfig().name = name
+			config.Notifiers[name] = notifier
+		}
+	}
+
 	seenChecks := map[string]bool{}
 
 	checks, ok := root["checks"]
@@ -98,6 +125,14 @@ func getConfig() (*Config, error) {
 
 			if _, ok := checkConfig["tags"]; !ok {
 				panic("check config without tags")
+			}
+
+			notifier, ok := checkConfig["notifier"]
+			if !ok {
+				panic("check config without notifier")
+			}
+			if _, ok := config.Notifiers[notifier.(string)]; !ok {
+				panic(fmt.Sprintf("notifier %q does not exist", notifier))
 			}
 
 			notes := ""
@@ -155,6 +190,7 @@ func getConfig() (*Config, error) {
 			check.CommonConfig().numFailuresBeforeAlerting = numFailuresBeforeAlerting
 			check.CommonConfig().numSuccessBeforeRecovery = numSuccessBeforeRecovery
 			check.CommonConfig().notes = notes
+			check.CommonConfig().notifier = notifier.(string)
 			config.Checks = append(config.Checks, check)
 		}
 	}
@@ -250,6 +286,13 @@ func Run() {
 		panic(err)
 	}
 
+	for _, v := range config.Notifiers {
+		err := v.Init(config.WebAddress)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	checkManager := newCheckManager(config.Checks, config.MaxHistory, boltdb)
 
 	server := Server{
@@ -258,10 +301,8 @@ func Run() {
 
 	server.serveInBackground(config.ListenAddr)
 
-	alerter := newSlackAlerter(config.SlackWebHook, config.WebAddress)
-
 	for {
-		checkManager.run(alerter.alert)
+		checkManager.run(config.Notifiers)
 		time.Sleep(time.Minute)
 	}
 }

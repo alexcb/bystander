@@ -108,7 +108,7 @@ func getConfig() (*Config, error) {
 	if webAddr, ok := root["web_address"]; ok {
 		config.WebAddress = webAddr.(string)
 	} else {
-		config.WebAddress = config.ListenAddr
+		config.WebAddress = "http://" + config.ListenAddr
 	}
 
 	notifiers, ok := root["notifiers"]
@@ -314,6 +314,23 @@ func (s *Server) serveInBackground(addr string) {
 	}()
 }
 
+func verifyServerID(webAddress, serverID string) {
+	time.Sleep(time.Second)
+	url := webAddress + "/id"
+	resp, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	resp.Body.Close()
+	if string(body) != serverID {
+		panic(fmt.Sprintf("web_address is misconfigured. instance server id is %q; but web_address (%q) returns %q", string(body), url, serverID))
+	}
+}
+
 // Run runs the canary
 func Run() {
 	hostname, _ := os.Hostname()
@@ -352,6 +369,9 @@ func Run() {
 		"addr": "config.ListenAddr",
 	}).Info("listening")
 	server.serveInBackground(config.ListenAddr)
+
+	// check that the web_address is configured correctly
+	verifyServerID(config.WebAddress, serverID)
 
 	for {
 		checkManager.run(config.Notifiers)

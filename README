@@ -11,3 +11,9 @@ Building:
 Running:
 
     BYSTANDER_CONFIG=config/config.yaml ./bystander
+
+Adding deps
+
+    export GOPATH=`pwd`
+    dep ensure -add <import-path-here>
+

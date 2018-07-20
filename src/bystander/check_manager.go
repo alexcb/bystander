@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	log "github.com/sirupsen/logrus"
 )
 
 type alertFunc func(id, checkName string, ok bool, details map[string]string)
@@ -197,6 +198,10 @@ func (s *checkManager) run(notifiers map[string]Notifier) {
 		status := check.run()
 		s.lock.Lock()
 
+		log.WithFields(log.Fields{
+			"check": check.name(),
+		}).Info("running check")
+
 		if len(check.status) >= s.maxHistory {
 			check.status = check.status[:(s.maxHistory - 1)]
 		}
@@ -205,7 +210,9 @@ func (s *checkManager) run(notifiers map[string]Notifier) {
 
 		alertNeeded := check.shouldAlert(s.alertFrequency)
 		if alertNeeded && s.isCheckSilenced(check) {
-			fmt.Printf("silencing %v\n", check.name())
+			log.WithFields(log.Fields{
+				"check": check.name(),
+			}).Info("silencing check")
 			alertNeeded = false
 		}
 
@@ -214,6 +221,10 @@ func (s *checkManager) run(notifiers map[string]Notifier) {
 		notifier := notifiers[check.config.CommonConfig().notifier]
 
 		if alertNeeded {
+			log.WithFields(log.Fields{
+				"check":  check.name(),
+				"status": status.ok,
+			}).Info("check notify")
 			notifier.Notify(check.id(), check.name(), status.ok, status.details)
 		}
 	}

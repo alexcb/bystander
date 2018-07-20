@@ -9,6 +9,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/ianschenck/envflag"
+	log "github.com/sirupsen/logrus"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -324,6 +325,10 @@ func Run() {
 		panic(err)
 	}
 
+	log.SetFormatter(&log.JSONFormatter{})
+	log.SetOutput(os.Stderr)
+	log.SetLevel(log.InfoLevel)
+
 	boltdb, err := bolt.Open(config.DatabasePath, 0600, &bolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
 		panic(err)
@@ -343,13 +348,13 @@ func Run() {
 		id:           serverID,
 	}
 
-	fmt.Printf("listening on %v\n", config.ListenAddr)
+	log.WithFields(log.Fields{
+		"addr": "config.ListenAddr",
+	}).Info("listening")
 	server.serveInBackground(config.ListenAddr)
 
 	for {
-		fmt.Println("running")
 		checkManager.run(config.Notifiers)
-		fmt.Println("sleeping")
 		time.Sleep(config.CheckFrequency)
 	}
 }

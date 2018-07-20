@@ -105,6 +105,10 @@ func getConfig() (*Config, error) {
 			switch notifierType {
 			case "slack":
 				notifier = parseSlackNotifier(notifierConfig)
+			case "stderr":
+				notifier = parseStdErrNotifier(notifierConfig)
+			default:
+				panic(fmt.Sprintf("notifier type %q does not exist", notifierType))
 			}
 			notifier.CommonConfig().name = name
 			config.Notifiers[name] = notifier
@@ -299,6 +303,7 @@ func Run() {
 		checkManager: checkManager,
 	}
 
+	fmt.Printf("listening on %v\n", config.ListenAddr)
 	server.serveInBackground(config.ListenAddr)
 
 	for {

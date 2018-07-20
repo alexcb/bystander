@@ -24,19 +24,14 @@ type CheckStatus struct {
 }
 
 type check struct {
-	config   Check
-	silenced bool
-	status   []*CheckStatus
+	config Check
+	status []*CheckStatus
 
 	lastAlerted       time.Time
 	lastAlertedStatus bool
 }
 
 func (s *check) shouldAlert() bool {
-	if s.silenced {
-		return false
-	}
-
 	ok, numConsecutive := getConsecutiveStatus(s.status)
 
 	if ok {
@@ -120,29 +115,29 @@ func (s *check) run() *CheckStatus {
 	}
 }
 
-func (s *check) json() string {
+func (s *checkManager) checkJSON(chk *check) string {
 	details := map[string]string{}
 	var lastCheck time.Time
 	var duration time.Duration
 
-	ok, numConsecutive := getConsecutiveStatus(s.status)
+	ok, numConsecutive := getConsecutiveStatus(chk.status)
 
-	if len(s.status) > 0 {
-		details = s.status[0].details
-		duration = s.status[0].duration
-		lastCheck = s.status[0].time
+	if len(chk.status) > 0 {
+		details = chk.status[0].details
+		duration = chk.status[0].duration
+		lastCheck = chk.status[0].time
 	}
 
 	data, err := json.Marshal(&CheckResult{
-		ID:             s.id(),
-		Tags:           s.config.CommonConfig().tags,
-		Notes:          s.config.CommonConfig().notes,
+		ID:             chk.id(),
+		Tags:           chk.config.CommonConfig().tags,
+		Notes:          chk.config.CommonConfig().notes,
 		Details:        details,
 		OK:             ok,
 		NumConsecutive: numConsecutive,
 		LastRun:        lastCheck,
 		Duration:       duration.Seconds(),
-		Silenced:       s.silenced,
+		Silenced:       s.isCheckSilenced(chk),
 	})
 	if err != nil {
 		panic(err)
@@ -177,7 +172,6 @@ func newCheckManager(checkConfigs []Check, maxHistory int, db *bolt.DB) *checkMa
 		db:         db,
 		maxHistory: maxHistory,
 	}
-	manager.applySilencersUnsafe()
 	return manager
 }
 
@@ -208,6 +202,9 @@ func (s *checkManager) run(notifiers map[string]Notifier) {
 		check.status = append([]*CheckStatus{status}, check.status...)
 
 		alertNeeded := check.shouldAlert()
+		if alertNeeded && s.isCheckSilenced(check) {
+			alertNeeded = false
+		}
 
 		s.lock.Unlock()
 
@@ -229,15 +226,14 @@ func isSilenced(silencer, check map[string]string) bool {
 	return true
 }
 
-func (s *checkManager) applySilencersUnsafe() {
-	for _, check := range s.checks {
-		check.silenced = false
-		for _, silencer := range s.silencers {
-			if isSilenced(silencer.Filters, check.config.CommonConfig().tags) {
-				check.silenced = true
-			}
+func (s *checkManager) isCheckSilenced(c *check) bool {
+	silenced := false
+	for _, silencer := range s.silencers {
+		if isSilenced(silencer.Filters, c.config.CommonConfig().tags) {
+			silenced = true
 		}
 	}
+	return silenced
 }
 
 // CheckResult is the results of a check
@@ -258,7 +254,7 @@ func (s *checkManager) getChecksJSON() string {
 	defer s.lock.Unlock()
 	res := []string{}
 	for _, check := range s.checks {
-		res = append(res, check.json())
+		res = append(res, s.checkJSON(check))
 	}
 	return "[" + strings.Join(res, ", ") + "]"
 }
@@ -291,8 +287,6 @@ func (s *checkManager) updateSilencer(ss *silencer) {
 	if err != nil {
 		panic(err)
 	}
-
-	s.applySilencersUnsafe()
 }
 
 func (s *checkManager) removeSilencer(k string) {
@@ -315,6 +309,4 @@ func (s *checkManager) removeSilencer(k string) {
 	if err != nil {
 		panic(err)
 	}
-
-	s.applySilencersUnsafe()
 }

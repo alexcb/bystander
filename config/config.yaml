@@ -9,6 +9,8 @@ notifiers:
   slack-channel-two:
     type: slack
     webhook: https://hooks.slack.com/services/.../.../...
+  stderr:
+    type: stderr
 checks:
  - type: url
    tags:
@@ -19,7 +21,7 @@ checks:
    url: http://example.com/bad
    num_failures_before_alerting: 1
    num_success_before_recovery: 1
-   notifier: slack-channel-one
+   notifier: stderr
    notes: >
        free form text, perhaps to a <a href="url.txt">url</a>?
        I'm not sure if we should support something like markdown?
@@ -34,5 +36,5 @@ checks:
    command: /app/check-command -v --foo 123
    num_failures_before_alerting: 10
    num_success_before_recovery: 2
-   notifier: slack-channel-two
+   notifier: stderr
 

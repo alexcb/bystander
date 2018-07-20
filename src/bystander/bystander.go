@@ -14,13 +14,15 @@ import (
 
 // Config holds global configuration for this app
 type Config struct {
-	ListenAddr   string
-	WebAddress   string
-	SlackWebHook string
-	Checks       []Check
-	DatabasePath string
-	MaxHistory   int
-	Notifiers    map[string]Notifier
+	ListenAddr     string
+	WebAddress     string
+	SlackWebHook   string
+	Checks         []Check
+	DatabasePath   string
+	MaxHistory     int
+	Notifiers      map[string]Notifier
+	CheckFrequency time.Duration
+	AlertFrequency time.Duration
 }
 
 var errMissingDB = fmt.Errorf("missing db path")
@@ -69,6 +71,28 @@ func getConfig() (*Config, error) {
 		config.DatabasePath = db.(string)
 	} else {
 		return nil, errMissingDB
+	}
+
+	if freq, ok := root["check_frequency"]; ok {
+		s := freq.(string)
+		d, err := time.ParseDuration(s)
+		if err != nil {
+			panic("unable to parse check_frequency")
+		}
+		config.CheckFrequency = d
+	} else {
+		config.CheckFrequency = time.Minute
+	}
+
+	if freq, ok := root["alert_frequency"]; ok {
+		s := freq.(string)
+		d, err := time.ParseDuration(s)
+		if err != nil {
+			panic("unable to parse check_frequency")
+		}
+		config.AlertFrequency = d
+	} else {
+		config.AlertFrequency = time.Hour
 	}
 
 	if x, ok := root["max_history"]; ok {
@@ -206,6 +230,7 @@ func getConfig() (*Config, error) {
 type Server struct {
 	config       *Config
 	checkManager *checkManager
+	id           string
 }
 
 func (s *Server) checksJSON(w http.ResponseWriter, r *http.Request) {
@@ -215,6 +240,14 @@ func (s *Server) checksJSON(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	w.Write([]byte(status))
+}
+
+func (s *Server) getID(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte(s.id))
+}
+
+func (s *Server) getVersion(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte(fmt.Sprintf("version=%v; build_time=%v;", gitHash, buildTime)))
 }
 
 func (s *Server) silencersJSON(w http.ResponseWriter, r *http.Request) {
@@ -270,6 +303,8 @@ func (s *Server) serveInBackground(addr string) {
 	mux.HandleFunc("/silencers.json", s.silencersJSON)
 	mux.HandleFunc("/add-silencer", s.addSilencers)
 	mux.HandleFunc("/delete-silencer", s.deleteSilencers)
+	mux.HandleFunc("/id", s.getID)
+	mux.HandleFunc("/version", s.getVersion)
 	go func() {
 		if err := http.ListenAndServe(addr, mux); err != nil {
 			//log.Err(err).Panic("error listening on HTTP status server")
@@ -280,6 +315,10 @@ func (s *Server) serveInBackground(addr string) {
 
 // Run runs the canary
 func Run() {
+	hostname, _ := os.Hostname()
+	startTime := time.Now().Unix()
+	serverID := fmt.Sprintf("%v-%v", hostname, startTime)
+
 	config, err := getConfig()
 	if err != nil {
 		panic(err)
@@ -291,23 +330,26 @@ func Run() {
 	}
 
 	for _, v := range config.Notifiers {
-		err := v.Init(config.WebAddress)
+		err := v.Init(config.WebAddress, serverID)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	checkManager := newCheckManager(config.Checks, config.MaxHistory, boltdb)
+	checkManager := newCheckManager(config.Checks, config.MaxHistory, config.AlertFrequency, boltdb)
 
 	server := Server{
 		checkManager: checkManager,
+		id:           serverID,
 	}
 
 	fmt.Printf("listening on %v\n", config.ListenAddr)
 	server.serveInBackground(config.ListenAddr)
 
 	for {
+		fmt.Println("running")
 		checkManager.run(config.Notifiers)
-		time.Sleep(time.Minute)
+		fmt.Println("sleeping")
+		time.Sleep(config.CheckFrequency)
 	}
 }

@@ -12,12 +12,14 @@ import (
 type slackAlerter struct {
 	webHook    string
 	webAddress string
+	serverID   string
 }
 
-func newSlackAlerter(webHook, webAddress string) *slackAlerter {
+func newSlackAlerter(webHook, webAddress, serverID string) *slackAlerter {
 	return &slackAlerter{
 		webHook:    webHook,
 		webAddress: webAddress,
+		serverID:   serverID,
 	}
 }
 
@@ -41,7 +43,7 @@ func (s *slackAlerter) alert(id, checkName string, ok bool, details map[string]s
 		})
 	}
 
-	titleLink := fmt.Sprintf("%s#%s", s.webAddress, id)
+	titleLink := fmt.Sprintf("%s?_sid=%s#%s", s.webAddress, s.serverID, id)
 
 	var fallback string
 	var color string

@@ -31,7 +31,7 @@ type check struct {
 	lastAlertedStatus bool
 }
 
-func (s *check) shouldAlert() bool {
+func (s *check) shouldAlert(alertFrequency time.Duration) bool {
 	ok, numConsecutive := getConsecutiveStatus(s.status)
 
 	if ok {
@@ -48,7 +48,7 @@ func (s *check) shouldAlert() bool {
 		if ok {
 			return false
 		}
-		if time.Since(s.lastAlerted) < time.Hour {
+		if time.Since(s.lastAlerted) < alertFrequency {
 			// only re-alert after an hour
 			return false
 		}
@@ -146,14 +146,15 @@ func (s *checkManager) checkJSON(chk *check) string {
 }
 
 type checkManager struct {
-	checks     []*check
-	lock       *sync.Mutex
-	silencers  map[string]*silencer
-	db         *bolt.DB
-	maxHistory int
+	checks         []*check
+	lock           *sync.Mutex
+	silencers      map[string]*silencer
+	db             *bolt.DB
+	maxHistory     int
+	alertFrequency time.Duration
 }
 
-func newCheckManager(checkConfigs []Check, maxHistory int, db *bolt.DB) *checkManager {
+func newCheckManager(checkConfigs []Check, maxHistory int, alertFrequency time.Duration, db *bolt.DB) *checkManager {
 	silencers, err := loadSilencers(db)
 	if err != nil {
 		panic(err)
@@ -166,11 +167,12 @@ func newCheckManager(checkConfigs []Check, maxHistory int, db *bolt.DB) *checkMa
 		})
 	}
 	manager := &checkManager{
-		checks:     checks,
-		lock:       &sync.Mutex{},
-		silencers:  silencers,
-		db:         db,
-		maxHistory: maxHistory,
+		checks:         checks,
+		lock:           &sync.Mutex{},
+		silencers:      silencers,
+		db:             db,
+		maxHistory:     maxHistory,
+		alertFrequency: alertFrequency,
 	}
 	return manager
 }
@@ -201,8 +203,9 @@ func (s *checkManager) run(notifiers map[string]Notifier) {
 
 		check.status = append([]*CheckStatus{status}, check.status...)
 
-		alertNeeded := check.shouldAlert()
+		alertNeeded := check.shouldAlert(s.alertFrequency)
 		if alertNeeded && s.isCheckSilenced(check) {
+			fmt.Printf("silencing %v\n", check.name())
 			alertNeeded = false
 		}
 

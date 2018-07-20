@@ -19,8 +19,8 @@ func parseSlackNotifier(c map[interface{}]interface{}) Notifier {
 	}
 }
 
-func (s *SlackNotifierConfig) Init(webAddr string) error {
-	s.alerter = newSlackAlerter(s.webhook, webAddr)
+func (s *SlackNotifierConfig) Init(webAddr, serverID string) error {
+	s.alerter = newSlackAlerter(s.webhook, webAddr, serverID)
 	return nil
 }
 

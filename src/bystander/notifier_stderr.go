@@ -14,7 +14,7 @@ func parseStdErrNotifier(c map[interface{}]interface{}) Notifier {
 	return &StdErrNotifierConfig{}
 }
 
-func (s *StdErrNotifierConfig) Init(webAddr string) error {
+func (s *StdErrNotifierConfig) Init(webAddr, serverID string) error {
 	return nil
 }
 

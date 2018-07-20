@@ -6,7 +6,7 @@ type Notifier interface {
 	Notify(id, checkName string, ok bool, details map[string]string) error
 
 	// Init initializes the notifier
-	Init(webAddr string) error
+	Init(webAddr, serverID string) error
 
 	// CommonConfig returns a pointer to the base check config
 	CommonConfig() *NotifierConfig

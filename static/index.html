@@ -78,7 +78,7 @@
     function load_silencers() {
       $.getJSON("/silencers.json", function(data, status){
         if( data.length == 0 ) {
-          $('#silencers').html('<i>There are not active silencers</i>');
+          $('#silencers').html('<i>There are no active silencers</i>');
           return;
         }
         var table = $('<table class="u-full-width">');

@@ -8,35 +8,14 @@ import (
 )
 
 // URLCheckConfig defines a URL check
-type URLCheckConfig struct {
-	CheckConfig
+type URLCheck struct {
+	CheckCommon
 	url     string
 	timeout time.Duration
 }
 
-func parseURLCheck(c map[interface{}]interface{}) Check {
-	url, ok := c["url"]
-	if !ok {
-		panic("url missing")
-	}
-
-	timeoutStr, ok := c["timeout"]
-	if !ok {
-		timeoutStr = "1s"
-	}
-	timeout, err := time.ParseDuration(timeoutStr.(string))
-	if err != nil {
-		timeout = time.Second
-	}
-
-	return &URLCheckConfig{
-		url:     url.(string),
-		timeout: timeout,
-	}
-}
-
 // Run runs the check
-func (s *URLCheckConfig) Run() (bool, map[string]string) {
+func (s *URLCheck) Run() (bool, map[string]string) {
 
 	client := http.Client{
 		Timeout: s.timeout,

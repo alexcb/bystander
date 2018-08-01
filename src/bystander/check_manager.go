@@ -25,8 +25,8 @@ type CheckStatus struct {
 }
 
 type check struct {
-	config Check
-	status []*CheckStatus
+	instance Check
+	status   []*CheckStatus
 
 	lastAlerted       time.Time
 	lastAlertedStatus bool
@@ -36,11 +36,11 @@ func (s *check) shouldAlert(alertFrequency time.Duration) bool {
 	ok, numConsecutive := getConsecutiveStatus(s.status)
 
 	if ok {
-		if numConsecutive < s.config.CommonConfig().numSuccessBeforeRecovery {
+		if numConsecutive < s.instance.Common().numSuccessBeforeRecovery {
 			return false
 		}
 	} else {
-		if numConsecutive < s.config.CommonConfig().numFailuresBeforeAlerting {
+		if numConsecutive < s.instance.Common().numFailuresBeforeAlerting {
 			return false
 		}
 	}
@@ -76,7 +76,7 @@ func getNameFromTags(tags map[string]string) string {
 }
 
 func (s *check) name() string {
-	return getNameFromTags(s.config.CommonConfig().tags)
+	return getNameFromTags(s.instance.Common().tags)
 }
 
 func (s *check) text() string {
@@ -104,7 +104,7 @@ func truncateString(s string, n int) string {
 func (s *check) run() *CheckStatus {
 	now := time.Now().UTC()
 
-	ok, details := s.config.Run()
+	ok, details := s.instance.Run()
 
 	duration := time.Since(now)
 
@@ -131,8 +131,8 @@ func (s *checkManager) checkJSON(chk *check) string {
 
 	data, err := json.Marshal(&CheckResult{
 		ID:             chk.id(),
-		Tags:           chk.config.CommonConfig().tags,
-		Notes:          chk.config.CommonConfig().notes,
+		Tags:           chk.instance.Common().tags,
+		Notes:          chk.instance.Common().notes,
 		Details:        details,
 		OK:             ok,
 		NumConsecutive: numConsecutive,
@@ -155,17 +155,36 @@ type checkManager struct {
 	alertFrequency time.Duration
 }
 
-func newCheckManager(checkConfigs []Check, maxHistory int, alertFrequency time.Duration, db *bolt.DB) *checkManager {
+func newCheckManager(checkConfigs []CheckConfig, vars map[string]foreachConfig, maxHistory int, alertFrequency time.Duration, db *bolt.DB) *checkManager {
 	silencers, err := loadSilencers(db)
 	if err != nil {
 		panic(err)
 	}
 	checks := []*check{}
 	for _, cc := range checkConfigs {
-		checks = append(checks, &check{
-			config:            cc,
-			lastAlertedStatus: true,
-		})
+		if len(cc.CommonConfig().foreach) == 0 {
+			checkInstance, err := cc.Init(nil)
+			if err != nil {
+				panic(err)
+			}
+			checks = append(checks, &check{
+				instance:          checkInstance,
+				lastAlertedStatus: true,
+			})
+		} else {
+			itr := newForeachIter(cc.CommonConfig().foreach, vars)
+			for itr.Next() {
+				m := itr.Value()
+				checkInstance, err := cc.Init(m)
+				if err != nil {
+					panic(err)
+				}
+				checks = append(checks, &check{
+					instance:          checkInstance,
+					lastAlertedStatus: true,
+				})
+			}
+		}
 	}
 	manager := &checkManager{
 		checks:         checks,
@@ -218,7 +237,7 @@ func (s *checkManager) run(notifiers map[string]Notifier) {
 
 		s.lock.Unlock()
 
-		notifier := notifiers[check.config.CommonConfig().notifier]
+		notifier := notifiers[check.instance.Common().notifier]
 
 		if alertNeeded {
 			log.WithFields(log.Fields{
@@ -243,7 +262,7 @@ func isSilenced(silencer, check map[string]string) bool {
 func (s *checkManager) isCheckSilenced(c *check) bool {
 	silenced := false
 	for _, silencer := range s.silencers {
-		if isSilenced(silencer.Filters, c.config.CommonConfig().tags) {
+		if isSilenced(silencer.Filters, c.instance.Common().tags) {
 			silenced = true
 		}
 	}

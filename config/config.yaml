@@ -1,5 +1,5 @@
 listen_address: 0.0.0.0:8088
-web_address: http://hostname-to-bystander:8088/
+web_address: http://127.0.0.1:8088
 db: bystander.db
 max_history: 60
 notifiers:
@@ -11,6 +11,14 @@ notifiers:
     webhook: https://hooks.slack.com/services/.../.../...
   stderr:
     type: stderr
+vars:
+  region:
+    type: static
+    values:
+      - west
+      - east
+      - north
+      - south
 checks:
  - type: url
    tags:
@@ -38,3 +46,15 @@ checks:
    num_success_before_recovery: 2
    notifier: stderr
 
+ - type: url
+   foreach:
+     region: region
+   tags:
+    - name: url-check
+    - hostname: $region.example.com
+    - woot: ${region}yeah
+   timeout: 5s
+   url: http://$hostname/bad
+   num_failures_before_alerting: 1
+   num_success_before_recovery: 1
+   notifier: stderr

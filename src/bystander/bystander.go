@@ -18,7 +18,8 @@ type Config struct {
 	ListenAddr     string
 	WebAddress     string
 	SlackWebHook   string
-	Checks         []Check
+	Checks         []CheckConfig
+	Vars           map[string]foreachConfig
 	DatabasePath   string
 	MaxHistory     int
 	Notifiers      map[string]Notifier
@@ -27,6 +28,24 @@ type Config struct {
 }
 
 var errMissingDB = fmt.Errorf("missing db path")
+
+type foreachConfig interface {
+	values() []string
+}
+
+type staticForeach []string
+
+func (s *staticForeach) values() []string {
+	if s == nil {
+		return nil
+	}
+	v := []string{}
+	for _, x := range *s {
+		v = append(v, string(x))
+	}
+
+	return v
+}
 
 func getConfig() (*Config, error) {
 	var ok bool
@@ -54,7 +73,7 @@ func getConfig() (*Config, error) {
 	}
 
 	config := Config{
-		Checks:    []Check{},
+		Checks:    []CheckConfig{},
 		Notifiers: map[string]Notifier{},
 	}
 
@@ -140,8 +159,30 @@ func getConfig() (*Config, error) {
 		}
 	}
 
-	seenChecks := map[string]bool{}
+	foreach := map[string]foreachConfig{}
+	vars, ok := root["vars"]
+	if ok {
+		varsMap, ok := vars.(map[interface{}]interface{})
+		if !ok {
+			panic("vars must be a map")
+		}
+		for k, v := range varsMap {
+			vv := v.(map[interface{}]interface{})
+			items := []string{}
+			if vv["type"].(string) != "static" {
+				panic("only static type is supported")
+			}
+			for _, x := range vv["values"].([]interface{}) {
+				items = append(items, x.(string))
+			}
+			xx := staticForeach(items)
+			kk := k.(string)
+			foreach[kk] = &xx
+		}
+	}
+	config.Vars = foreach
 
+	seenChecks := map[string]bool{}
 	checks, ok := root["checks"]
 	if ok {
 		for _, c := range checks.([]interface{}) {
@@ -171,6 +212,7 @@ func getConfig() (*Config, error) {
 					panic(fmt.Sprintf("unable to parse notes -- value is not a string; got %t: %v", x, x))
 				}
 			}
+			_ = notes
 
 			numFailuresBeforeAlerting := 1
 			if x, ok := checkConfig["num_failures_before_alerting"]; ok {
@@ -208,14 +250,24 @@ func getConfig() (*Config, error) {
 			}
 			seenChecks[checkName] = true
 
-			var check Check
+			foreach := map[string]string{}
+			if checkForeach, ok := checkConfig["foreach"]; ok {
+				for k, v := range checkForeach.(map[interface{}]interface{}) {
+					foreach[k.(string)] = v.(string)
+				}
+			}
+
+			var check CheckConfig
 			switch checkType {
 			case "url":
 				check = parseURLCheck(checkConfig)
 			case "docker":
 				check = parseDockerCheck(checkConfig)
+			default:
+				panic(fmt.Sprintf("unhandled type %q", checkType))
 			}
 			check.CommonConfig().tags = tags
+			check.CommonConfig().foreach = foreach
 			check.CommonConfig().numFailuresBeforeAlerting = numFailuresBeforeAlerting
 			check.CommonConfig().numSuccessBeforeRecovery = numSuccessBeforeRecovery
 			check.CommonConfig().notes = notes
@@ -358,7 +410,7 @@ func Run() {
 		}
 	}
 
-	checkManager := newCheckManager(config.Checks, config.MaxHistory, config.AlertFrequency, boltdb)
+	checkManager := newCheckManager(config.Checks, config.Vars, config.MaxHistory, config.AlertFrequency, boltdb)
 
 	server := Server{
 		checkManager: checkManager,
@@ -366,7 +418,7 @@ func Run() {
 	}
 
 	log.WithFields(log.Fields{
-		"addr": "config.ListenAddr",
+		"addr": config.ListenAddr,
 	}).Info("listening")
 	server.serveInBackground(config.ListenAddr)
 

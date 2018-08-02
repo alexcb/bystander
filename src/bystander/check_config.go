@@ -78,6 +78,20 @@ func subVar(s string, vars map[string]string) string {
 			}
 		}
 	}
+	if found {
+		if escaped {
+			panic("missing closing variable character \"}\"")
+		}
+		varname := varnameBuf.String()
+		val, ok := vars[varname]
+		if !ok {
+			panic(fmt.Sprintf("var %q not found", varname))
+		}
+		buf.WriteString(val)
+		varnameBuf.Reset()
+		found = false
+	}
+
 	return buf.String()
 }
 

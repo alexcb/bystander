@@ -37,6 +37,11 @@ func subVar(s string, vars map[string]string) string {
 	escaped := false
 	for _, r := range s {
 		if found {
+			if varnameBuf.Len() == 0 && r == '$' {
+				buf.WriteRune('$')
+				found = false
+				continue
+			}
 			if varnameBuf.Len() == 0 && r == '{' {
 				escaped = true
 				continue
@@ -69,14 +74,13 @@ func subVar(s string, vars map[string]string) string {
 			buf.WriteString(val)
 			varnameBuf.Reset()
 			found = false
-			buf.WriteRune(r)
-		} else {
-			if r == '$' {
-				found = true
-			} else {
-				buf.WriteRune(r)
-			}
 		}
+		if r == '$' {
+			found = true
+		} else {
+			buf.WriteRune(r)
+		}
+
 	}
 	if found {
 		if escaped {

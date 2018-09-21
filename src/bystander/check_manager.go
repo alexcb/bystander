@@ -116,6 +116,17 @@ func (s *check) run() *CheckStatus {
 	}
 }
 
+func checkCommandToString(args []string) string {
+	x := []string{}
+	for _, s := range args {
+		if strings.ContainsAny(s, "\"' ") {
+			s = fmt.Sprintf("%q", s)
+		}
+		x = append(x, s)
+	}
+	return strings.Join(x, " ")
+}
+
 func (s *checkManager) checkJSON(chk *check) string {
 	details := map[string]string{}
 	var lastCheck time.Time
@@ -133,6 +144,7 @@ func (s *checkManager) checkJSON(chk *check) string {
 		ID:             chk.id(),
 		Tags:           chk.instance.Common().tags,
 		Notes:          chk.instance.Common().notes,
+		Command:        checkCommandToString(chk.instance.Command()),
 		Details:        details,
 		OK:             ok,
 		NumConsecutive: numConsecutive,
@@ -276,6 +288,7 @@ type CheckResult struct {
 	OK             bool              `json:"ok"`
 	NumConsecutive int               `json:"num_consecutive"`
 	Details        map[string]string `json:"details"`
+	Command        string            `json:"command"`
 	LastRun        time.Time         `json:"last_run"`
 	Duration       float64           `json:"duration"`
 	Silenced       bool              `json:"silenced"`

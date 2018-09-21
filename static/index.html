@@ -290,6 +290,10 @@
         div.append($('<hr>'));
       }
 
+      div.append($('<h4>Command</h4>'));
+      div.append(check.command);
+      div.append($('<hr>'));
+
       div.append($('<h4>Output</h4>'));
       var rows = [];
       $.each(check.details, function(k, v) {

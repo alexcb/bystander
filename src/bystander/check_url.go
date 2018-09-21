@@ -14,6 +14,11 @@ type URLCheck struct {
 	timeout time.Duration
 }
 
+// Command returns the command
+func (s *URLCheck) Command() []string {
+	return []string{"curl", s.url}
+}
+
 // Run runs the check
 func (s *URLCheck) Run() (bool, map[string]string) {
 

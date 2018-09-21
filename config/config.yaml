@@ -26,7 +26,7 @@ checks:
     - subsystem: external
     - environment: prod
    timeout: 5s
-   url: http://example.com/bad
+   url: http://example.com/b ad
    num_failures_before_alerting: 1
    num_success_before_recovery: 1
    notifier: stderr
@@ -41,7 +41,7 @@ checks:
     - subsystem: internal
     - environment: prod
    image: docker.internal.example.com/checks/my-check:a9f2bb72f1
-   command: /app/check-command -v --foo 123
+   command: /app/check-command -v --foo "123 abc"
    num_failures_before_alerting: 10
    num_success_before_recovery: 2
    notifier: stderr

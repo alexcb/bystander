@@ -15,13 +15,13 @@ type DockerCheck struct {
 	env     map[string]string
 }
 
-// Run runs the check
-func (s *DockerCheck) Run() (bool, map[string]string) {
+// Command returns the command
+func (s *DockerCheck) Command() []string {
 	configArgs, err := shlex.Split(s.command)
 	if err != nil {
 		panic(err)
 	}
-	args := []string{"run", "--network", "host", "--rm"}
+	args := []string{"docker", "run", "--network", "host", "--rm"}
 
 	for k, v := range s.env {
 		args = append(args, "-e", fmt.Sprintf("%s=%s", k, v))
@@ -30,7 +30,13 @@ func (s *DockerCheck) Run() (bool, map[string]string) {
 	args = append(args, s.image)
 	args = append(args, configArgs...)
 
-	cmd := exec.Command("docker", args...)
+	return args
+}
+
+// Run runs the check
+func (s *DockerCheck) Run() (bool, map[string]string) {
+	args := s.Command()
+	cmd := exec.Command(args[0], args[1:]...)
 	stdoutStderr, err := cmd.CombinedOutput()
 
 	details := map[string]string{

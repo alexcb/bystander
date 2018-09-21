@@ -5,6 +5,8 @@ type Check interface {
 	// Run runs the check, it returns true if the check is OK, and a map of additional details
 	Run() (bool, map[string]string)
 
+	Command() []string
+
 	// CommonConfig returns a pointer to the base check config
 	Common() *CheckCommon
 }

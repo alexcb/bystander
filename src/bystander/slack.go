@@ -13,13 +13,17 @@ type slackAlerter struct {
 	webHook    string
 	webAddress string
 	serverID   string
+	okColor    string
+	failColor  string
 }
 
-func newSlackAlerter(webHook, webAddress, serverID string) *slackAlerter {
+func newSlackAlerter(webHook, webAddress, serverID, okColor, failColor string) *slackAlerter {
 	return &slackAlerter{
 		webHook:    webHook,
 		webAddress: webAddress,
 		serverID:   serverID,
+		okColor:    okColor,
+		failColor:  failColor,
 	}
 }
 
@@ -49,10 +53,10 @@ func (s *slackAlerter) alert(id, checkName string, ok bool, details map[string]s
 	var color string
 	if ok {
 		fallback = fmt.Sprintf("%s is ok; visit %s for more information", checkName, s.webAddress)
-		color = "#00CC00"
+		color = s.okColor
 	} else {
 		fallback = fmt.Sprintf("%s is not ok; visit %s for more information", checkName, s.webAddress)
-		color = "#CC0000"
+		color = s.failColor
 	}
 
 	notification := &SlackNotification{

@@ -19,6 +19,7 @@ type CheckConfig interface {
 type CheckCommonConfig struct {
 	tags                      map[string]string
 	foreach                   map[string]string
+	hide                      []string
 	numFailuresBeforeAlerting int
 	numSuccessBeforeRecovery  int
 	notes                     string
@@ -118,12 +119,21 @@ func mergeVars(m1, m2 map[string]string) map[string]string {
 	return mm
 }
 
-func initCheckCommon(c Check, cc CheckConfig, vars map[string]string) map[string]string {
-	c.Common().tags = subVars(cc.CommonConfig().tags, vars)
-	varsAndTags := mergeVars(vars, c.Common().tags)
+func removeVars(m map[string]string, hide []string) map[string]string {
+	mm := map[string]string{}
+	for k, v := range m {
+		mm[k] = v
+	}
+	for _, k := range hide {
+		delete(mm, k)
+	}
+	return mm
+}
+
+func initCheckCommon(c Check, cc CheckConfig, vars map[string]string) {
+	c.Common().tags = removeVars(mergeVars(vars, subVars(cc.CommonConfig().tags, vars)), cc.CommonConfig().hide)
 	c.Common().numFailuresBeforeAlerting = cc.CommonConfig().numFailuresBeforeAlerting
 	c.Common().numSuccessBeforeRecovery = cc.CommonConfig().numSuccessBeforeRecovery
-	c.Common().notes = subVar(cc.CommonConfig().notes, varsAndTags)
-	c.Common().notifier = subVar(cc.CommonConfig().notifier, varsAndTags)
-	return varsAndTags
+	c.Common().notes = subVar(cc.CommonConfig().notes, c.Common().tags)
+	c.Common().notifier = subVar(cc.CommonConfig().notifier, c.Common().tags)
 }

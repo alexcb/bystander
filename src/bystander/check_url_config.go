@@ -34,9 +34,9 @@ func parseURLCheck(c map[interface{}]interface{}) CheckConfig {
 
 func (s *URLCheckConfig) Init(vars map[string]string) (Check, error) {
 	c := &URLCheck{}
-	varsAndTags := initCheckCommon(c, s, vars)
+	initCheckCommon(c, s, vars)
 
-	c.url = subVar(s.url, varsAndTags)
+	c.url = subVar(s.url, c.Common().tags)
 	c.timeout = s.timeout
 
 	return c, nil

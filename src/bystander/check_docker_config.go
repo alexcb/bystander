@@ -44,9 +44,9 @@ func parseDockerCheck(c map[interface{}]interface{}) CheckConfig {
 // Run runs the check
 func (s *DockerCheckConfig) Init(vars map[string]string) (Check, error) {
 	c := &DockerCheck{}
-	varsAndTags := initCheckCommon(c, s, vars)
-	c.image = subVar(s.image, varsAndTags)
-	c.command = subVar(s.command, varsAndTags)
-	c.env = subVars(s.env, varsAndTags)
+	initCheckCommon(c, s, vars)
+	c.image = subVar(s.image, c.Common().tags)
+	c.command = subVar(s.command, c.Common().tags)
+	c.env = subVars(s.env, c.Common().tags)
 	return c, nil
 }

@@ -53,6 +53,8 @@ checks:
     - name: url-check
     - hostname: $region.example.com
     - woot: ${region}yeah
+   hide:
+    - region
    timeout: 5s
    url: http://$hostname/bad
    num_failures_before_alerting: 1

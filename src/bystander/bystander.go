@@ -257,6 +257,13 @@ func getConfig() (*Config, error) {
 				}
 			}
 
+			hideList := []string{}
+			if hide, ok := checkConfig["hide"]; ok {
+				for _, k := range hide.([]interface{}) {
+					hideList = append(hideList, k.(string))
+				}
+			}
+
 			var check CheckConfig
 			switch checkType {
 			case "url":
@@ -267,6 +274,7 @@ func getConfig() (*Config, error) {
 				panic(fmt.Sprintf("unhandled type %q", checkType))
 			}
 			check.CommonConfig().tags = tags
+			check.CommonConfig().hide = hideList
 			check.CommonConfig().foreach = foreach
 			check.CommonConfig().numFailuresBeforeAlerting = numFailuresBeforeAlerting
 			check.CommonConfig().numSuccessBeforeRecovery = numSuccessBeforeRecovery

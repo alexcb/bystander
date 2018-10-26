@@ -8,6 +8,10 @@ Building:
 
     ./build.sh
 
+Testing:
+
+    unit tests are run automatically via build.sh
+
 Updating deps
 
     cd src/bystander

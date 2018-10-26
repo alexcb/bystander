@@ -73,4 +73,11 @@ func TestVarSub(t *testing.T) {
 	if want != got {
 		t.Errorf("want %q; got %q", want, got)
 	}
+	got = subVar("i want $my_var to work", map[string]string{
+		"my_var": "it",
+	})
+	want = "i want it to work"
+	if want != got {
+		t.Errorf("want %q; got %q", want, got)
+	}
 }

@@ -62,7 +62,7 @@ func subVar(s string, vars map[string]string) string {
 				varnameBuf.WriteRune(r)
 				continue
 			}
-			if unicode.IsLetter(r) {
+			if unicode.IsLetter(r) || r == '_' {
 				varnameBuf.WriteRune(r)
 				continue
 			}

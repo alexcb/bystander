@@ -240,7 +240,7 @@
       var rows = []
       $.each(get_sorted_tags(tags), function( i, kv) {
         var k = kv[0];
-        var v = kv[1];
+        var v = $('<pre>').text(kv[1]);
         rows.push([k, v]);
       });
       return build_table(rows);
@@ -291,7 +291,7 @@
       }
 
       div.append($('<h4>Command</h4>'));
-      div.append(check.command);
+      div.append($('<pre>').text(check.command));
       div.append($('<hr>'));
 
       div.append($('<h4>Output</h4>'));

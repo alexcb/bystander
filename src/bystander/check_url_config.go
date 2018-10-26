@@ -36,7 +36,8 @@ func (s *URLCheckConfig) Init(vars map[string]string) (Check, error) {
 	c := &URLCheck{}
 	initCheckCommon(c, s, vars)
 
-	c.url = subVar(s.url, c.Common().tags)
+	c.url = subVar(s.url, c.Common().tags, false)
+	c.urlPublic = subVar(s.url, c.Common().tags, true)
 	c.timeout = s.timeout
 
 	return c, nil

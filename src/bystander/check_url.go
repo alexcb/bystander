@@ -10,13 +10,19 @@ import (
 // URLCheckConfig defines a URL check
 type URLCheck struct {
 	CheckCommon
-	url     string
-	timeout time.Duration
+	url       string
+	urlPublic string
+	timeout   time.Duration
 }
 
 // Command returns the command
 func (s *URLCheck) Command() []string {
 	return []string{"curl", s.url}
+}
+
+// Command returns the command
+func (s *URLCheck) CommandPublic() []string {
+	return []string{"curl", s.urlPublic}
 }
 
 // Run runs the check
@@ -38,7 +44,7 @@ func (s *URLCheck) Run() (bool, map[string]string) {
 	responseData, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return false, map[string]string{
-			"url":    s.url,
+			"url":    s.urlPublic,
 			"err":    fmt.Sprintf("%v", err),
 			"body":   truncateString(string(responseData), 300),
 			"status": fmt.Sprintf("%d", resp.StatusCode),
@@ -47,7 +53,7 @@ func (s *URLCheck) Run() (bool, map[string]string) {
 
 	ok := resp.StatusCode == http.StatusOK
 	return ok, map[string]string{
-		"url":    s.url,
+		"url":    s.urlPublic,
 		"body":   truncateString(string(responseData), 300),
 		"status": fmt.Sprintf("%d", resp.StatusCode),
 	}

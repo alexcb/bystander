@@ -40,8 +40,11 @@ checks:
     - name: docker-check
     - subsystem: internal
     - environment: prod
+    - secret: dont-show-this
+   hide:
+    - secret
    image: docker.internal.example.com/checks/my-check:a9f2bb72f1
-   command: /app/check-command -v --foo "123 abc"
+   command: /app/check-command -v --foo "123 abc" $secret
    num_failures_before_alerting: 10
    num_success_before_recovery: 2
    notifier: stderr

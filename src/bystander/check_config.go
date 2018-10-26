@@ -31,7 +31,8 @@ func (s *CheckCommonConfig) CommonConfig() *CheckCommonConfig {
 	return s
 }
 
-func subVar(s string, vars map[string]string) string {
+func subVar(s string, vars map[string]string, allowMissing bool) string {
+	var redacted = "<redacted>"
 	var buf bytes.Buffer
 	var varnameBuf bytes.Buffer
 	found := false
@@ -52,7 +53,11 @@ func subVar(s string, vars map[string]string) string {
 					varname := varnameBuf.String()
 					val, ok := vars[varname]
 					if !ok {
-						panic(fmt.Sprintf("var %q not found", varname))
+						if allowMissing {
+							val = redacted
+						} else {
+							panic(fmt.Sprintf("var %q not found", varname))
+						}
 					}
 					buf.WriteString(val)
 					varnameBuf.Reset()
@@ -70,7 +75,11 @@ func subVar(s string, vars map[string]string) string {
 			varname := varnameBuf.String()
 			val, ok := vars[varname]
 			if !ok {
-				panic(fmt.Sprintf("var %q not found", varname))
+				if allowMissing {
+					val = redacted
+				} else {
+					panic(fmt.Sprintf("var %q not found", varname))
+				}
 			}
 			buf.WriteString(val)
 			varnameBuf.Reset()
@@ -90,7 +99,11 @@ func subVar(s string, vars map[string]string) string {
 		varname := varnameBuf.String()
 		val, ok := vars[varname]
 		if !ok {
-			panic(fmt.Sprintf("var %q not found", varname))
+			if allowMissing {
+				val = redacted
+			} else {
+				panic(fmt.Sprintf("var %q not found", varname))
+			}
 		}
 		buf.WriteString(val)
 		varnameBuf.Reset()
@@ -100,10 +113,10 @@ func subVar(s string, vars map[string]string) string {
 	return buf.String()
 }
 
-func subVars(m, vars map[string]string) map[string]string {
+func subVars(m, vars map[string]string, allowMissing bool) map[string]string {
 	mm := map[string]string{}
 	for k, v := range m {
-		mm[k] = subVar(v, vars)
+		mm[k] = subVar(v, vars, allowMissing)
 	}
 	return mm
 }
@@ -131,9 +144,10 @@ func removeVars(m map[string]string, hide []string) map[string]string {
 }
 
 func initCheckCommon(c Check, cc CheckConfig, vars map[string]string) {
-	c.Common().tags = removeVars(mergeVars(vars, subVars(cc.CommonConfig().tags, vars)), cc.CommonConfig().hide)
+	c.Common().tags = mergeVars(vars, subVars(cc.CommonConfig().tags, vars, false))
+	c.Common().tagsPublic = removeVars(c.Common().tags, cc.CommonConfig().hide)
 	c.Common().numFailuresBeforeAlerting = cc.CommonConfig().numFailuresBeforeAlerting
 	c.Common().numSuccessBeforeRecovery = cc.CommonConfig().numSuccessBeforeRecovery
-	c.Common().notes = subVar(cc.CommonConfig().notes, c.Common().tags)
-	c.Common().notifier = subVar(cc.CommonConfig().notifier, c.Common().tags)
+	c.Common().notes = subVar(cc.CommonConfig().notes, c.Common().tags, false)
+	c.Common().notifier = subVar(cc.CommonConfig().notifier, c.Common().tags, false)
 }

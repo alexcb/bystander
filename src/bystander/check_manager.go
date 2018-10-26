@@ -76,7 +76,7 @@ func getNameFromTags(tags map[string]string) string {
 }
 
 func (s *check) name() string {
-	return getNameFromTags(s.instance.Common().tags)
+	return getNameFromTags(s.instance.Common().tagsPublic)
 }
 
 func (s *check) text() string {
@@ -142,9 +142,9 @@ func (s *checkManager) checkJSON(chk *check) string {
 
 	data, err := json.Marshal(&CheckResult{
 		ID:             chk.id(),
-		Tags:           chk.instance.Common().tags,
+		Tags:           chk.instance.Common().tagsPublic,
 		Notes:          chk.instance.Common().notes,
-		Command:        checkCommandToString(chk.instance.Command()),
+		Command:        checkCommandToString(chk.instance.CommandPublic()),
 		Details:        details,
 		OK:             ok,
 		NumConsecutive: numConsecutive,

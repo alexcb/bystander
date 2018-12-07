@@ -5,7 +5,10 @@
   <title>Bystander alerting system</title>
   <link rel="icon" type="image/ico" href="/static/favicon.ico">
 
+  <link rel="stylesheet" type="text/css" href="/static/jquery.datetimepicker.min.css"/ >
+
   <script src="/static/jquery.min.js"></script>
+  <script src="/static/jquery.datetimepicker.full.min.js"></script>
 
   <link rel="stylesheet" href="/static/normalize.css">
   <link rel="stylesheet" href="/static/skeleton.css">
@@ -47,6 +50,14 @@
      return new Date(ms);
     }
 
+    function date_to_epoch(s) {
+      const date_time = s.split(' ');
+      const d = date_time[0].split('-');
+      const t = date_time[1].split(':');
+      const epoch = (new Date(d[0], d[1] - 1, d[2], t[0], t[1], 0)).valueOf();
+      return epoch / 1000;
+    }
+
     function get_name(tags) {
       var name = '';
       var first = true;
@@ -64,15 +75,21 @@
     }
 
     function formatDateTime(date) {
-        var d = new Date(date),
-            month = '' + (d.getMonth() + 1),
-            day = '' + d.getDate(),
-            year = d.getFullYear();
-
-        if (month.length < 2) month = '0' + month;
-        if (day.length < 2) day = '0' + day;
-
-        return [year, month, day].join('-');
+      var d = new Date(date);
+      var month = '' + (d.getMonth() + 1);
+      var day = '' + d.getDate();
+      var year = d.getFullYear();
+      var hour = '' + d.getHours();
+      var minute = '' + d.getMinutes();
+    
+      if (month.length < 2) month = '0' + month;
+      if (day.length < 2) day = '0' + day;
+      if (hour.length < 2) hour = '0' + hour;
+      if (minute.length < 2) minute = '0' + minute;
+    
+      var date_s = [year, month, day].join('-');
+      var time_s = [hour, minute].join(':');
+      return date_s + ' ' + time_s;
     }
 
     function load_silencers() {
@@ -158,6 +175,30 @@
       });
     }
 
+    // TODO this function needs to be customizable, not all users are on pacific time
+    function getSilenceDefault() {
+      var epoch = Math.round(new Date().getTime() / 1000);
+
+      // 6 hours from now
+      epoch += 60*60*6;
+
+      // round to nearest minute
+      if( (epoch%3600) != 0 ) {
+        epoch += 3600 - (epoch % 3600);
+      }
+
+      // only allow alerts between 15:00 UTC and 5:00 UTC
+      // if an alert comes in between 5:00 UTC and 15:00, snap it until 5:00 UTC
+      var h = (epoch % 86400) / 3600;
+      if( 5 <= h && h <= 15 ) {
+        epoch += (15 - h) * 3600;
+      }
+
+      var d = new Date(0);
+      d.setUTCSeconds(epoch);
+      return d;
+    }
+
     function showAddSilencer(tags) {
       modal_to_show = 'add-silencer';
       update_location_hash('add-silencer');
@@ -177,20 +218,32 @@
       var input_reason = $('<input class="u-full-width">');
       label_reason.append(input_reason);
 
+      var default_until = formatDateTime(getSilenceDefault());
+      var label_until = $('<label>Until:</label>');
+      var input_until = $('<input class="u-full-width">');
+      input_until.val(default_until);
+      jQuery(input_until).datetimepicker({
+         format:'Y-m-d H:i'
+      });
+      label_until.append(input_until);
+
+
       var button = $('<a class="button button-primary">Add Silencer</a>');
 
       form.append(label_tags);
       form.append(label_reason);
+      form.append(label_until);
       form.append(button);
       button.click(function() { form.submit(); })
 
       form.submit(function(event) {
         var tags = get_tags_from_text(input_tags.val());
         var reason = input_reason.val();
+        var until_unix = date_to_epoch(input_until.val());
         var silencer = JSON.stringify({
           "filters": tags,
           "reason": reason,
-          "until": 2000000000,
+          "until": until_unix,
         });
         $.post('/add-silencer', silencer, function(data) {
           $.modal.close();
@@ -226,12 +279,14 @@
 
     function get_tags_from_text(text) {
       var tags = {};
-      var kvs = text.split(/[ \n]+/);
+      var kvs = text.split(/[\n]+/);
       $.each(kvs, function(i, kv) {
         kv = kv.split('=');
-        var k = kv[0];
-        var v = kv[1];
-        tags[k] = v;
+        if( kv.length == 2 ) {
+          var k = kv[0].trim();
+          var v = kv[1].trim();
+          tags[k] = v;
+        }
       });
       return tags;
     }

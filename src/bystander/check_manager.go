@@ -272,8 +272,12 @@ func isSilenced(silencer, check map[string]string) bool {
 }
 
 func (s *checkManager) isCheckSilenced(c *check) bool {
+	now := time.Now().Unix()
 	silenced := false
 	for _, silencer := range s.silencers {
+		if now > silencer.Until {
+			continue
+		}
 		if isSilenced(silencer.Filters, c.instance.Common().tags) {
 			silenced = true
 		}

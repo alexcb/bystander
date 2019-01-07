@@ -27,6 +27,10 @@
   text-decoration: line-through;
 }
 
+.clickable-row {
+  cursor: pointer;
+}
+
 textarea.tags {
   min-height: 200px;
 }

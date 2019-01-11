@@ -6,6 +6,7 @@ type DockerCheckConfig struct {
 	image   string
 	command string
 	env     map[string]string
+	volumes map[string]string
 }
 
 func parseDockerCheck(c map[interface{}]interface{}) CheckConfig {
@@ -26,9 +27,23 @@ func parseDockerCheck(c map[interface{}]interface{}) CheckConfig {
 			for k, v := range xx {
 				kk := k.(string)
 				if _, ok := env[kk]; ok {
-					panic("key defined twice")
+					panic("env key defined twice")
 				}
 				env[kk] = v.(string)
+			}
+		}
+	}
+
+	volumes := map[string]string{}
+	if _, ok := c["volumes"]; ok {
+		for _, x := range c["volumes"].([]interface{}) {
+			xx := x.(map[interface{}]interface{})
+			for k, v := range xx {
+				kk := k.(string)
+				if _, ok := volumes[kk]; ok {
+					panic("volume key defined twice")
+				}
+				volumes[kk] = v.(string)
 			}
 		}
 	}
@@ -37,6 +52,7 @@ func parseDockerCheck(c map[interface{}]interface{}) CheckConfig {
 		image:   image.(string),
 		command: command.(string),
 		env:     env,
+		volumes: volumes,
 	}
 
 }
@@ -54,6 +70,8 @@ func (s *DockerCheckConfig) Init(vars map[string]string) (Check, error) {
 
 	c.env = subVars(s.env, c.Common().tags, false)
 	c.envPublic = subVars(s.env, c.Common().tagsPublic, true)
+
+	c.volumes = subVars(s.volumes, c.Common().tags, true)
 
 	return c, nil
 }

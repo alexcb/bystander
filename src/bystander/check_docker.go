@@ -16,10 +16,11 @@ type DockerCheck struct {
 	commandPublic string
 	env           map[string]string
 	envPublic     map[string]string
+	volumes       map[string]string
 }
 
 // Command returns the command
-func (s *DockerCheck) constructCommand(image, command string, env map[string]string) []string {
+func (s *DockerCheck) constructCommand(image, command string, env, volumes map[string]string) []string {
 	configArgs, err := shlex.Split(command)
 	if err != nil {
 		panic(err)
@@ -30,6 +31,10 @@ func (s *DockerCheck) constructCommand(image, command string, env map[string]str
 		args = append(args, "-e", fmt.Sprintf("%s=%s", k, v))
 	}
 
+	for k, v := range volumes {
+		args = append(args, "-v", fmt.Sprintf("%s:%s", k, v))
+	}
+
 	args = append(args, image)
 	args = append(args, configArgs...)
 
@@ -38,12 +43,12 @@ func (s *DockerCheck) constructCommand(image, command string, env map[string]str
 
 // Command returns the command
 func (s *DockerCheck) Command() []string {
-	return s.constructCommand(s.image, s.command, s.env)
+	return s.constructCommand(s.image, s.command, s.env, s.volumes)
 }
 
 // CommandPublic returns a public version of the command without any secrets
 func (s *DockerCheck) CommandPublic() []string {
-	return s.constructCommand(s.imagePublic, s.commandPublic, s.envPublic)
+	return s.constructCommand(s.imagePublic, s.commandPublic, s.envPublic, s.volumes)
 }
 
 // Run runs the check

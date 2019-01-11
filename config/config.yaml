@@ -49,6 +49,17 @@ checks:
    num_success_before_recovery: 2
    notifier: stderr
 
+ - type: docker
+   tags:
+    - name: test-vol-mount
+   volumes:
+    - /tmp: /tmp-on-host
+   image: ubuntu:latest
+   command: ls /tmp-on-host
+   num_failures_before_alerting: 10
+   num_success_before_recovery: 2
+   notifier: stderr
+
  - type: url
    foreach:
      region: region

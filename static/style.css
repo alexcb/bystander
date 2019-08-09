@@ -18,13 +18,13 @@
 }
 
 .checkok {
-  color: #00CC00;
 }
 .checkfail {
   color: #CC0000;
 }
 .checksilenced {
   text-decoration: line-through;
+  color: #000000;
 }
 
 .clickable-row {

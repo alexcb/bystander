@@ -11,6 +11,7 @@
   <script src="/static/jquery.datetimepicker.full.min.js"></script>
 
   <link rel="stylesheet" href="/static/normalize.css">
+
   <link rel="stylesheet" href="/static/skeleton.css">
   <link rel="stylesheet" href="/static/style.css">
 
@@ -59,18 +60,21 @@
     }
 
     function get_name(tags) {
-      var name = '';
+      var name = '<b>' + tags['name'] + '</b>{';
       var first = true;
-      $.each(get_sorted_tags(tags), function( i, kv) {
+      $.each(get_sorted_tags(tags), function(i, kv) {
         var k = kv[0];
         var v = kv[1];
-        if( first ) {
-          first = false;
-        } else {
-          name = name + "<br>";
+        if( k != 'name' ) {
+          if( first ) {
+            first = false;
+          } else {
+            name = name + ',';
+          }
+          name = name + k + '=<b>' + v + '</b>';
         }
-        name = name + k + "=<b>" + v + "</b>";
       });
+      name = name + '}';
       return name;
     }
 
@@ -157,8 +161,10 @@
           row.append($('<td>').html(name));
           if( check.ok ) {
             row.append($('<td>').html('OK'));
+            row.addClass("checkok")
           } else {
             row.append($('<td>').html('FAIL'));
+            row.addClass("checkfail")
           }
           //row.append($('<td>').html(check.text));
           row.append($('<td>').html(check.last_run));
@@ -433,6 +439,7 @@
     }
 
     function startup() {
+      console.log('startup() called');
       load_checks();
       load_silencers();
 
@@ -441,7 +448,7 @@
     }
 
     $(function() {
-      $(document.body).attr('onload', 'startup();');
+      $(document).ready(startup);
     });
   </script>
 </head>

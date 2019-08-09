@@ -60,7 +60,7 @@
     }
 
     function get_name(tags) {
-      var name = '<b>' + tags['name'] + '</b>{';
+      var name = tags['name'] + '{';
       var first = true;
       $.each(get_sorted_tags(tags), function(i, kv) {
         var k = kv[0];
@@ -71,7 +71,7 @@
           } else {
             name = name + ',';
           }
-          name = name + k + '=<b>' + v + '</b>';
+          name = name + k + '=' + v;
         }
       });
       name = name + '}';

@@ -12,6 +12,11 @@ Testing:
 
     unit tests are run automatically via build.sh
 
+HTML dev:
+
+    # serve static files with fake alerts/silencer data
+    ./stub-html-server/serv.py
+
 Updating deps
 
     cd src/bystander

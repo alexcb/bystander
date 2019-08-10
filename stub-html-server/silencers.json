@@ -1,0 +1,17 @@
+[
+  {
+    "filters": {
+      "hostname": "example.com",
+      "name": "node-check"
+    },
+    "until": 1560556800,
+    "reason": ""
+  },
+  {
+    "filters": {
+      "kafka_cluster": "a"
+    },
+    "until": 1564520400,
+    "reason": ""
+  }
+]

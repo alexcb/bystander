@@ -287,6 +287,15 @@ func getConfig() (*Config, error) {
 	return &config, nil
 }
 
+func noCache(fn func(http.ResponseWriter, *http.Request)) func(http.ResponseWriter, *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		fn(w, r)
+	}
+}
+
 // Server implements the server that displays the status of the canary
 type Server struct {
 	config       *Config
@@ -360,12 +369,12 @@ func (s *Server) serveInBackground(addr string) {
 		http.ServeFile(w, r, "./static/index.html")
 	})
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	mux.HandleFunc("/checks.json", s.checksJSON)
-	mux.HandleFunc("/silencers.json", s.silencersJSON)
+	mux.HandleFunc("/checks.json", noCache(s.checksJSON))
+	mux.HandleFunc("/silencers.json", noCache(s.silencersJSON))
 	mux.HandleFunc("/add-silencer", s.addSilencers)
 	mux.HandleFunc("/delete-silencer", s.deleteSilencers)
-	mux.HandleFunc("/id", s.getID)
-	mux.HandleFunc("/version", s.getVersion)
+	mux.HandleFunc("/id", noCache(s.getID))
+	mux.HandleFunc("/version", noCache(s.getVersion))
 	go func() {
 		if err := http.ListenAndServe(addr, mux); err != nil {
 			//log.Err(err).Panic("error listening on HTTP status server")

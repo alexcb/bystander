@@ -32,3 +32,9 @@ Adding deps
     export GOPATH=`pwd`
     dep ensure -add <import-path-here>
 
+
+Known Issues
+ - Clicking inside the silence alerts modal, and releasing outside of the modal
+   causes the modal to close (which makes it hard to change the silencer tags when selecting them
+   if you deselect outside of the modal). The issue has been raised by an assiduous developer in
+   https://github.com/kylefox/jquery-modal/issues/246

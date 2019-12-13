@@ -6,7 +6,7 @@ import (
 	"io"
 	"sort"
 
-	"bystander/structuredstream"
+	"bystander/bystander/structuredstream"
 
 	"github.com/boltdb/bolt"
 )

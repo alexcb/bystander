@@ -165,9 +165,10 @@ type checkManager struct {
 	db             *bolt.DB
 	maxHistory     int
 	alertFrequency time.Duration
+	icbinp         *icantbelieveitsnotprometheus
 }
 
-func newCheckManager(checkConfigs []CheckConfig, vars map[string]foreachConfig, maxHistory int, alertFrequency time.Duration, db *bolt.DB) *checkManager {
+func newCheckManager(checkConfigs []CheckConfig, vars map[string]foreachConfig, maxHistory int, alertFrequency time.Duration, db *bolt.DB, icbinp *icantbelieveitsnotprometheus) *checkManager {
 	silencers, err := loadSilencers(db)
 	if err != nil {
 		panic(err)
@@ -205,6 +206,7 @@ func newCheckManager(checkConfigs []CheckConfig, vars map[string]foreachConfig, 
 		db:             db,
 		maxHistory:     maxHistory,
 		alertFrequency: alertFrequency,
+		icbinp:         icbinp,
 	}
 	return manager
 }
@@ -227,6 +229,9 @@ func getConsecutiveStatus(statuses []*CheckStatus) (bool, int) {
 func (s *checkManager) run(notifiers map[string]Notifier) {
 	for _, check := range s.checks {
 		status := check.run()
+
+		s.icbinp.setCheckResult(check.instance.Common().tagsPublic, status.ok)
+
 		s.lock.Lock()
 
 		log.WithFields(log.Fields{

@@ -375,6 +375,8 @@ func (s *Server) serveInBackground(addr string) {
 	mux.HandleFunc("/delete-silencer", s.deleteSilencers)
 	mux.HandleFunc("/id", noCache(s.getID))
 	mux.HandleFunc("/version", noCache(s.getVersion))
+	mux.HandleFunc("/metrics", s.checkManager.icbinp.handler)
+
 	go func() {
 		if err := http.ListenAndServe(addr, mux); err != nil {
 			//log.Err(err).Panic("error listening on HTTP status server")
@@ -427,7 +429,9 @@ func Run() {
 		}
 	}
 
-	checkManager := newCheckManager(config.Checks, config.Vars, config.MaxHistory, config.AlertFrequency, boltdb)
+	icbinp := newicantbelieveitsnotprometheus()
+
+	checkManager := newCheckManager(config.Checks, config.Vars, config.MaxHistory, config.AlertFrequency, boltdb, icbinp)
 
 	server := Server{
 		checkManager: checkManager,
